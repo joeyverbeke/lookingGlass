@@ -12,16 +12,24 @@ sub = ctx.socket(zmq.SUB)
 sub.connect("tcp://192.168.1.17:5555")
 sub.setsockopt(zmq.SUBSCRIBE, b"")
 
-pan = 0
-tilt = 0
-
-camPan_max = 400
-camTilt_max = 300
+#pan = 0
+#tilt = 0
 
 pwm = Adafruit_PCA9685.PCA9685()
 
 servo_min = 150  # Min pulse length out of 4096
 servo_max = 600  # Max pulse length out of 4096
+
+servoPan_pos = int(round(servo_min + (servo_max - servo_min)/2))
+servoTilt_pos = int(round(servo_min + (servo_max - servo_min)/2))
+
+xOffset_max = 200
+yOffset_max = 150
+
+camPan_max = xOffset_max * 2
+camTilt_max = yOffset_max * 2
+
+panTilt_scaleDivisor = 10
 
 def set_servo_pulse(channel, pulse):
 	pulse_length = 1000000    # 1,000,000 us per second
@@ -36,10 +44,29 @@ def set_servo_pulse(channel, pulse):
 def scaleNum(OldValue, OldMin, OldMax, NewMin, NewMax):
 	return int(round((((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin))
 
-def moveAmount(facePos, _camTilt):
-	if _camPa
+def setServoPos(xOffset, yOffset):
+	global servoPan_pos
+
+	if abs(xOffset) > (servo_max - servo_min) / 10:
+#	if True:
+		if xOffset > 0:
+			pan = scaleNum(xOffset, 0, camPan_max/2, 0, xOffset_max / panTilt_scaleDivisor)
+			if (servoPan_pos + pan) < servo_max:
+				servoPan_pos += pan
+			else:
+				servoPan_pos = servo_max
+		elif xOffset < 0:
+			xOffset *= -1
+			pan = scaleNum(xOffset, 0, camPan_max/2, 0, xOffset_max / panTilt_scaleDivisor)
+			if (servoPan_pos - pan) > servo_min:
+				servoPan_pos -= pan
+			else:
+				servoPan_pos = servo_min
 
 pwm.set_pwm_freq(60)
+
+pwm.set_pwm(0, 0, servoPan_pos)
+#pwm.set_pwm(0, 0, servoTilt_pos)
 
 while True:
 	headOffset = sub.recv_pyobj()
@@ -49,11 +76,15 @@ while True:
 	pan = scaleNum(camPan, 0, camPan_max, servo_min, servo_max)
 	tilt = scaleNum(camTilt, 0, camTilt_max, servo_min, servo_max)
 
-	print('pan: {}.'.format(camPan))
-	print('tilt: {}.'.format(camTilt))
+#	print('pan: {}.'.format(camPan))
+#	print('tilt: {}.'.format(camTilt))
 
 	if int(round(time.time() * 1000)) - timeLastSent > timeBetweenSends:
-		pwm.set_pwm(0, 0, pan)
+		xOffset_inv = headOffset[0] * -1
+		setServoPos(xOffset_inv, headOffset[1])
+		pwm.set_pwm(0, 0, servoPan_pos)
+		print('servoPan_pos: {}.'.format(servoPan_pos))
+		print('xOffset: {}.'.format(headOffset[0]))
 		timeLastSent = int(round(time.time() * 1000))
 
-	print('---')
+#	print('---')
