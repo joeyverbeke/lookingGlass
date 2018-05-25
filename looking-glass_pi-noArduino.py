@@ -4,7 +4,7 @@ import time
 import zmq
 
 timeLastSent = 0
-timeBetweenSends = 50
+timeBetweenSends = 15
 
 ctx = zmq.Context()
 sub = ctx.socket(zmq.SUB)
@@ -23,13 +23,17 @@ servo_max = 600  # Max pulse length out of 4096
 servoPan_pos = int(round(servo_min + (servo_max - servo_min)/2))
 servoTilt_pos = int(round(servo_min + (servo_max - servo_min)/2))
 
+#TODO: make a function of timeBetweenSends
+servoPan_midBox = 10
+
 xOffset_max = 200
 yOffset_max = 150
 
 camPan_max = xOffset_max * 2
 camTilt_max = yOffset_max * 2
 
-panTilt_scaleDivisor = 10
+#TODO: make a function of timeBetweenSends and midBoxes ???
+panTilt_scaleDivisor = 20
 
 def set_servo_pulse(channel, pulse):
 	pulse_length = 1000000    # 1,000,000 us per second
@@ -44,10 +48,11 @@ def set_servo_pulse(channel, pulse):
 def scaleNum(OldValue, OldMin, OldMax, NewMin, NewMax):
 	return int(round((((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin))
 
+#TODO: make movement smoother, probably through smoother smaller grain steps
 def setServoPos(xOffset, yOffset):
 	global servoPan_pos
 
-	if abs(xOffset) > (servo_max - servo_min) / 10:
+	if abs(xOffset) > (servo_max - servo_min) / servoPan_midBox:
 #	if True:
 		if xOffset > 0:
 			pan = scaleNum(xOffset, 0, camPan_max/2, 0, xOffset_max / panTilt_scaleDivisor)
