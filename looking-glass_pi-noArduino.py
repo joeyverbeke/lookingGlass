@@ -15,6 +15,9 @@ sub.setsockopt(zmq.SUBSCRIBE, b"")
 pan = 0
 tilt = 0
 
+camPan_max = 400
+camTilt_max = 300
+
 pwm = Adafruit_PCA9685.PCA9685()
 
 servo_min = 150  # Min pulse length out of 4096
@@ -33,15 +36,18 @@ def set_servo_pulse(channel, pulse):
 def scaleNum(OldValue, OldMin, OldMax, NewMin, NewMax):
 	return int(round((((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin))
 
+def moveAmount(facePos, _camTilt):
+	if _camPa
+
 pwm.set_pwm_freq(60)
 
 while True:
 	headOffset = sub.recv_pyobj()
-	camPan = int(180 - round(headOffset[0]))
+	camPan = int(camPan_max - round(headOffset[0]))
 	camTilt = int(round(headOffset[1]))
 
-	pan = scaleNum(camPan, 0, 180, servo_min, servo_max)
-	tilt = scaleNum(camTilt, 0, 180, servo_min, servo_max)
+	pan = scaleNum(camPan, 0, camPan_max, servo_min, servo_max)
+	tilt = scaleNum(camTilt, 0, camTilt_max, servo_min, servo_max)
 
 	print('pan: {}.'.format(camPan))
 	print('tilt: {}.'.format(camTilt))
@@ -50,6 +56,4 @@ while True:
 		pwm.set_pwm(0, 0, pan)
 		timeLastSent = int(round(time.time() * 1000))
 
-#	print('xOffset: {}.'.format(headOffset[0]))
-#	print('yOffset: {}.'.format(headOffset[1]))
 	print('---')
