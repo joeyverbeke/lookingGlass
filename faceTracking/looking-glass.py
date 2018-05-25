@@ -128,8 +128,8 @@ while True:
 		print('---')
 
 		if sendAsPantTilt:
-			panVal = scaleValue(faces[biggestFaceIndex][0], -200, 200, 0, 180)
-			tiltVal = scaleValue(faces[biggestFaceIndex][1], -150, 150, 0, 180)
+			panVal = scaleValue(faces[biggestFaceIndex][0], -200, 200, 0, 400)
+			tiltVal = scaleValue(faces[biggestFaceIndex][1], -150, 150, 0, 300)
 			panTilt = [panVal, tiltVal]
 			pub.send_pyobj(panTilt)
 		else:
