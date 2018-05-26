@@ -27,6 +27,7 @@ servoTilt_pos = int(round(servo_min + (servo_max - servo_min)/2))
 #TODO: make a function of timeBetweenSends
 servoPan_midBox = 10
 servoPan_midBox_continuous = 25
+servoTilt_midBox = 10
 
 xOffset_max = 200
 yOffset_max = 150
@@ -53,7 +54,26 @@ def scaleNum(OldValue, OldMin, OldMax, NewMin, NewMax):
 	return int(round((((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin))
 
 #TODO: make movement smoother, probably through smoother smaller grain steps
-def setServoPos(xOffset, yOffset):
+def setServoPos(yOffset):
+        global servoTilt_pos
+
+        if abs(yOffset) > (servo_max - servo_min) / servoTilt_midBox:
+#	if True:
+                if yOffset > 0:
+                        tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
+                        if (servoTilt_pos + tilt) < servo_max:
+                                servoTilt_pos += tilt
+                        else:
+                                servoTilt_pos = servo_max
+                elif yOffset < 0:
+                        yOffset *= -1
+                        tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
+                        if (servoTilt_pos - tilt) > servo_min:
+                                servoTilt_pos -= tilt
+                        else:
+                                servoTilt_pos = servo_min
+        
+'''
 	global servoPan_pos
 
 	if abs(xOffset) > (servo_max - servo_min) / servoPan_midBox:
@@ -71,6 +91,7 @@ def setServoPos(xOffset, yOffset):
 				servoPan_pos -= pan
 			else:
 				servoPan_pos = servo_min
+'''
 
 def setServoPos_continuous(xOffset):
 	global servoPan_pos
@@ -90,7 +111,7 @@ def setServoPos_continuous(xOffset):
 pwm.set_pwm_freq(60)
 
 pwm.set_pwm(0, 0, servoPan_pos)
-#pwm.set_pwm(0, 0, servoTilt_pos)
+pwm.set_pwm(0, 0, servoTilt_pos)
 
 while True:
 	headOffset = sub.recv_pyobj()
@@ -105,9 +126,11 @@ while True:
 
 	if int(round(time.time() * 1000)) - timeLastSent > timeBetweenSends:
 		xOffset_inv = headOffset[0] * -1
-#		setServoPos(xOffset_inv, headOffset[1])
+		yOffset_inv = headOffset[1] * -1
 		setServoPos_continuous(xOffset_inv)
+		setServoPos(yOffset_inv)
 		pwm.set_pwm(0, 0, int(round(servoPan_pos)))
+		pwm.set_pwm(1, 0, int(round(servoTilt_pos)))
 		print('servoPan_pos: {}.'.format(servoPan_pos))
 		print('xOffset: {}.'.format(headOffset[0]))
 		timeLastSent = int(round(time.time() * 1000))

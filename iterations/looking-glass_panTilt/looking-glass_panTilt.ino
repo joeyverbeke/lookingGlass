@@ -42,7 +42,7 @@ void recvFromPi() {
         int posDif = abs(panPos - lastPos_pan);
         posDif /= 10;
   
-        if(lastPos_pan < panPos)
+        if(lastPos_pan < panPo
         {
           panPos = panPos - posDif;
           if(panPos < 0)
