@@ -19,12 +19,14 @@ pwm = Adafruit_PCA9685.PCA9685()
 
 servo_min = 150  # Min pulse length out of 4096
 servo_max = 600  # Max pulse length out of 4096
+servo_mid = 385
 
 servoPan_pos = int(round(servo_min + (servo_max - servo_min)/2))
 servoTilt_pos = int(round(servo_min + (servo_max - servo_min)/2))
 
 #TODO: make a function of timeBetweenSends
 servoPan_midBox = 10
+servoPan_midBox_continuous = 25
 
 xOffset_max = 200
 yOffset_max = 150
@@ -34,6 +36,8 @@ camTilt_max = yOffset_max * 2
 
 #TODO: make a function of timeBetweenSends and midBoxes ???
 panTilt_scaleDivisor = 20
+continuousSpeedRange = 40
+
 
 def set_servo_pulse(channel, pulse):
 	pulse_length = 1000000    # 1,000,000 us per second
@@ -68,6 +72,21 @@ def setServoPos(xOffset, yOffset):
 			else:
 				servoPan_pos = servo_min
 
+def setServoPos_continuous(xOffset):
+	global servoPan_pos
+
+	if abs(xOffset) > servoPan_midBox_continuous:
+		if xOffset > 0:
+			servoPan_pos = scaleNum(xOffset, 0, camPan_max/2, servo_mid, servo_mid + continuousSpeedRange) #(servo_max-servo_mid) / continousDivisor)
+                        #servoPan_pos = 390
+		elif xOffset < 0:
+                        xOffset *= -1
+                        pan = scaleNum(xOffset, 0, camPan_max/2, 0, continuousSpeedRange) #(servo_mid-servo_min) / continuousDivisor)
+                        servoPan_pos = servo_mid - pan
+                        #servoPan_pos = 380
+	else:
+		servoPan_pos = servo_mid
+
 pwm.set_pwm_freq(60)
 
 pwm.set_pwm(0, 0, servoPan_pos)
@@ -86,8 +105,9 @@ while True:
 
 	if int(round(time.time() * 1000)) - timeLastSent > timeBetweenSends:
 		xOffset_inv = headOffset[0] * -1
-		setServoPos(xOffset_inv, headOffset[1])
-		pwm.set_pwm(0, 0, servoPan_pos)
+#		setServoPos(xOffset_inv, headOffset[1])
+		setServoPos_continuous(xOffset_inv)
+		pwm.set_pwm(0, 0, int(round(servoPan_pos)))
 		print('servoPan_pos: {}.'.format(servoPan_pos))
 		print('xOffset: {}.'.format(headOffset[0]))
 		timeLastSent = int(round(time.time() * 1000))
