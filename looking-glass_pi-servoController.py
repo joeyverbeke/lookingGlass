@@ -158,23 +158,23 @@ def defaultSearchAnim():
                         default_movingUp = True
         if default_s3Up:
                 s3_pos += 1
-                if s3_pos >= servo_max - (servo_max - servo_min)/2:
-                        s3_pos = servo_max - (servo_max - servo_min)/2
+                if s3_pos >= servo_min + (servo_max - servo_min)/4:
+                        s3_pos = servo_min + (servo_max - servo_min)/4
                         default_s3Up = False
         else:
-                s3_pos -= 2
-                if s3_pos <= servo_min + (servo_max - servo_min)/4:
-                        s3_pos = servo_min + (servo_max - servo_min)/4
+                s3_pos -= 1
+                if s3_pos <= servo_min + (servo_max - servo_min)/8:
+                        s3_pos = servo_min + (servo_max - servo_min)/8
                         default_s3Up = True
         if default_s4Up:
-                s4_pos += 2
-                if s4_pos >= servo_max - (servo_max - servo_min)/3:
-                        s4_pos = servo_max - (servo_max - servo_min)/3
+                s4_pos += 3
+                if s4_pos >= servo_max - (servo_max - servo_min)/2:
+                        s4_pos = servo_max - (servo_max - servo_min)/2
                         default_s4Up = False
         else:
-                s4_pos -= 1
-                if s4_pos <= servo_min + (servo_max - servo_min)/3:
-                        s4_pos = servo_min + (servo_max - servo_min)/3
+                s4_pos -= 3
+                if s4_pos <= servo_min + (servo_max - servo_min)/6:
+                        s4_pos = servo_min + (servo_max - servo_min)/6
                         default_s4Up = True
 
 while True:
