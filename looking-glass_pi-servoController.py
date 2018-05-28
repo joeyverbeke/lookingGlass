@@ -43,6 +43,21 @@ default_timeLastMoved = 0
 default_animSpeed = 15
 default_movingClockwise = True
 default_movingUp = True
+default_s3Up = True
+default_s4Up = True
+
+s3_trackingPos = int(round(servo_min + (servo_max - servo_min)/4))
+s4_trackingPos = int(round(servo_min + (servo_max - servo_min)/2))
+
+s3_pos = s3_trackingPos
+s4_pos = s4_trackingPos
+
+pwm.set_pwm_freq(60)
+
+pwm.set_pwm(0, 0, servoPan_pos)
+pwm.set_pwm(1, 0, servoTilt_pos)
+pwm.set_pwm(2, 0, s3_pos)
+pwm.set_pwm(3, 0, s4_pos)
 
 def set_servo_pulse(channel, pulse):
 	pulse_length = 1000000    # 1,000,000 us per second
@@ -116,7 +131,8 @@ def setServoPos_continuous(xOffset):
 		servoPan_pos = servo_mid
 
 def defaultSearchAnim():
-        global servoPan_pos, servoTilt_pos, default_movingClockwise, default_movingUp
+        global servoPan_pos, servoTilt_pos, s3_pos, s4_pos
+        global default_movingClockwise, default_movingUp, default_s3Up, default_s4Up
 
         #if int(round(time.time() * 1000)) - default_timeLastMoved >
         if default_movingClockwise:
@@ -140,12 +156,26 @@ def defaultSearchAnim():
                 if servoTilt_pos <= servo_min + (servo_max - servo_min)/4:
                         servoTilt_pos = servo_min + (servo_max - servo_min)/4
                         default_movingUp = True
-                
-
-pwm.set_pwm_freq(60)
-
-pwm.set_pwm(0, 0, servoPan_pos)
-pwm.set_pwm(0, 0, servoTilt_pos)
+        if default_s3Up:
+                s3_pos += 1
+                if s3_pos >= servo_max - (servo_max - servo_min)/2:
+                        s3_pos = servo_max - (servo_max - servo_min)/2
+                        default_s3Up = False
+        else:
+                s3_pos -= 2
+                if s3_pos <= servo_min + (servo_max - servo_min)/4:
+                        s3_pos = servo_min + (servo_max - servo_min)/4
+                        default_s3Up = True
+        if default_s4Up:
+                s4_pos += 2
+                if s4_pos >= servo_max - (servo_max - servo_min)/3:
+                        s4_pos = servo_max - (servo_max - servo_min)/3
+                        default_s4Up = False
+        else:
+                s4_pos -= 1
+                if s4_pos <= servo_min + (servo_max - servo_min)/3:
+                        s4_pos = servo_min + (servo_max - servo_min)/3
+                        default_s4Up = True
 
 while True:
 	headOffset = sub.recv_pyobj()
@@ -159,9 +189,13 @@ while True:
         #		setServoPos_continuous(xOffset_inv)
                         setServoPos_pan(xOffset_inv)
                         setServoPos_tilt(yOffset_inv)
+                        s3_pos = s3_trackingPos
+                        s4_pos = s4_trackingPos
 
                 pwm.set_pwm(0, 0, int(round(servoPan_pos)))
                 pwm.set_pwm(1, 0, int(round(servoTilt_pos)))
+                pwm.set_pwm(2, 0, int(round(s3_pos)))
+                pwm.set_pwm(3, 0, int(round(s4_pos)))
                 print('servoPan_pos: {}.'.format(servoPan_pos))
                 print('xOffset: {}.'.format(headOffset[0]))
                 timeLastSent = int(round(time.time() * 1000))
