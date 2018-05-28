@@ -4,7 +4,7 @@ import time
 import zmq
 
 timeLastSent = 0
-timeBetweenSends = 15
+timeBetweenSends = 10
 
 ctx = zmq.Context()
 sub = ctx.socket(zmq.SUB)
@@ -36,9 +36,13 @@ camPan_max = xOffset_max * 2
 camTilt_max = yOffset_max * 2
 
 #TODO: make a function of timeBetweenSends and midBoxes ???
-panTilt_scaleDivisor = 20
+panTilt_scaleDivisor = 30
 continuousSpeedRange = 40
 
+default_timeLastMoved = 0
+default_animSpeed = 15
+default_movingClockwise = True
+default_movingUp = True
 
 def set_servo_pulse(channel, pulse):
 	pulse_length = 1000000    # 1,000,000 us per second
@@ -111,6 +115,33 @@ def setServoPos_continuous(xOffset):
 	else:
 		servoPan_pos = servo_mid
 
+def defaultSearchAnim():
+        global servoPan_pos, servoTilt_pos, default_movingClockwise, default_movingUp
+
+        #if int(round(time.time() * 1000)) - default_timeLastMoved >
+        if default_movingClockwise:
+                servoPan_pos += 2
+                if servoPan_pos >= servo_max:
+                        servoPan_pos = servo_max
+                        default_movingClockwise = False
+        else:
+                servoPan_pos -= 2
+                if servoPan_pos <= servo_min:
+                        servoPan_pos = servo_min
+                        default_movingClockwise = True
+
+        if default_movingUp:
+                servoTilt_pos += 2
+                if servoTilt_pos >= servo_max - (servo_max - servo_min)/2:
+                        servoTilt_pos = servo_max - (servo_max - servo_min)/2
+                        default_movingUp = False
+        else:
+                servoTilt_pos -= 1
+                if servoTilt_pos <= servo_min + (servo_max - servo_min)/4:
+                        servoTilt_pos = servo_min + (servo_max - servo_min)/4
+                        default_movingUp = True
+                
+
 pwm.set_pwm_freq(60)
 
 pwm.set_pwm(0, 0, servoPan_pos)
@@ -118,25 +149,21 @@ pwm.set_pwm(0, 0, servoTilt_pos)
 
 while True:
 	headOffset = sub.recv_pyobj()
-	camPan = int(camPan_max - round(headOffset[0]))
-	camTilt = int(round(headOffset[1]))
-
-	pan = scaleNum(camPan, 0, camPan_max, servo_min, servo_max)
-	tilt = scaleNum(camTilt, 0, camTilt_max, servo_min, servo_max)
-
-#	print('pan: {}.'.format(camPan))
-#	print('tilt: {}.'.format(camTilt))
-
+	
 	if int(round(time.time() * 1000)) - timeLastSent > timeBetweenSends:
-		xOffset_inv = headOffset[0] * -1
-		yOffset_inv = headOffset[1] * -1
-#		setServoPos_continuous(xOffset_inv)
-		setServoPos_pan(xOffset_inv)
-		setServoPos_tilt(yOffset_inv)
-		pwm.set_pwm(0, 0, int(round(servoPan_pos)))
-		pwm.set_pwm(1, 0, int(round(servoTilt_pos)))
-		print('servoPan_pos: {}.'.format(servoPan_pos))
-		print('xOffset: {}.'.format(headOffset[0]))
-		timeLastSent = int(round(time.time() * 1000))
+                if headOffset[0] == 'd':
+                        defaultSearchAnim()
+                else:
+                        xOffset_inv = headOffset[0] * -1
+                        yOffset_inv = headOffset[1] * -1
+        #		setServoPos_continuous(xOffset_inv)
+                        setServoPos_pan(xOffset_inv)
+                        setServoPos_tilt(yOffset_inv)
+
+                pwm.set_pwm(0, 0, int(round(servoPan_pos)))
+                pwm.set_pwm(1, 0, int(round(servoTilt_pos)))
+                print('servoPan_pos: {}.'.format(servoPan_pos))
+                print('xOffset: {}.'.format(headOffset[0]))
+                timeLastSent = int(round(time.time() * 1000))
 
 #	print('---')
