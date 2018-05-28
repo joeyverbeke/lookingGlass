@@ -25,9 +25,9 @@ servoPan_pos = int(round(servo_min + (servo_max - servo_min)/2))
 servoTilt_pos = int(round(servo_min + (servo_max - servo_min)/2))
 
 #TODO: make a function of timeBetweenSends
-servoPan_midBox = 10
+servoPan_midBox = 20
 servoPan_midBox_continuous = 25
-servoTilt_midBox = 10
+servoTilt_midBox = 8
 
 xOffset_max = 200
 yOffset_max = 150
@@ -54,7 +54,7 @@ def scaleNum(OldValue, OldMin, OldMax, NewMin, NewMax):
 	return int(round((((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin))
 
 #TODO: make movement smoother, probably through smoother smaller grain steps
-def setServoPos(yOffset):
+def setServoPos_tilt(yOffset):
         global servoTilt_pos
 
         if abs(yOffset) > (servo_max - servo_min) / servoTilt_midBox:
@@ -72,26 +72,25 @@ def setServoPos(yOffset):
                                 servoTilt_pos -= tilt
                         else:
                                 servoTilt_pos = servo_min
-        
-'''
-	global servoPan_pos
 
-	if abs(xOffset) > (servo_max - servo_min) / servoPan_midBox:
+def setServoPos_pan(xOffset):
+        global servoPan_pos
+
+        if abs(xOffset) > (servo_max - servo_min) / servoTilt_midBox:
 #	if True:
-		if xOffset > 0:
-			pan = scaleNum(xOffset, 0, camPan_max/2, 0, xOffset_max / panTilt_scaleDivisor)
-			if (servoPan_pos + pan) < servo_max:
-				servoPan_pos += pan
-			else:
-				servoPan_pos = servo_max
-		elif xOffset < 0:
-			xOffset *= -1
-			pan = scaleNum(xOffset, 0, camPan_max/2, 0, xOffset_max / panTilt_scaleDivisor)
-			if (servoPan_pos - pan) > servo_min:
-				servoPan_pos -= pan
-			else:
-				servoPan_pos = servo_min
-'''
+                if xOffset > 0:
+                        pan = scaleNum(xOffset, 0, camTilt_max/2, 0, xOffset_max / panTilt_scaleDivisor)
+                        if (servoPan_pos + pan) < servo_max:
+                                servoPan_pos += pan
+                        else:
+                                servoTilt_pos = servo_max
+                elif xOffset < 0:
+                        xOffset *= -1
+                        pan = scaleNum(xOffset, 0, camTilt_max/2, 0, xOffset_max / panTilt_scaleDivisor)
+                        if (servoPan_pos - pan) > servo_min:
+                                servoPan_pos -= pan
+                        else:
+                                servoPan_pos = servo_min
 
 def setServoPos_continuous(xOffset):
 	global servoPan_pos
@@ -100,10 +99,14 @@ def setServoPos_continuous(xOffset):
 		if xOffset > 0:
 			servoPan_pos = scaleNum(xOffset, 0, camPan_max/2, servo_mid, servo_mid + continuousSpeedRange) #(servo_max-servo_mid) / continousDivisor)
                         #servoPan_pos = 390
+			if servoPan_pos < 395:
+                                servoPan_pos = 385
 		elif xOffset < 0:
                         xOffset *= -1
                         pan = scaleNum(xOffset, 0, camPan_max/2, 0, continuousSpeedRange) #(servo_mid-servo_min) / continuousDivisor)
                         servoPan_pos = servo_mid - pan
+                        if servoPan_pos > 375:
+                                servoPan_pos = 380
                         #servoPan_pos = 380
 	else:
 		servoPan_pos = servo_mid
@@ -127,8 +130,9 @@ while True:
 	if int(round(time.time() * 1000)) - timeLastSent > timeBetweenSends:
 		xOffset_inv = headOffset[0] * -1
 		yOffset_inv = headOffset[1] * -1
-		setServoPos_continuous(xOffset_inv)
-		setServoPos(yOffset_inv)
+#		setServoPos_continuous(xOffset_inv)
+		setServoPos_pan(xOffset_inv)
+		setServoPos_tilt(yOffset_inv)
 		pwm.set_pwm(0, 0, int(round(servoPan_pos)))
 		pwm.set_pwm(1, 0, int(round(servoTilt_pos)))
 		print('servoPan_pos: {}.'.format(servoPan_pos))
