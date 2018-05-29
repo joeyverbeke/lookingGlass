@@ -115,42 +115,6 @@ def offsetToTilt(yOffset):
 
         return int(round(newTilt))
 
-def setServoPos_tilt(yOffset):
-        global servoTilt_pos
-
-        if abs(yOffset) > (servo_max - servo_min) / servoTilt_midBox:
-                if yOffset > 0:
-                        tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
-                        if (servoTilt_pos + tilt) < servo_max:
-                                servoTilt_pos += tilt
-                        else:
-                                servoTilt_pos = servo_max
-                elif yOffset < 0:
-                        yOffset *= -1
-                        tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
-                        if (servoTilt_pos - tilt) > servo_min:
-                                servoTilt_pos -= tilt
-                        else:
-                                servoTilt_pos = servo_min
-
-def setServoPos_pan(xOffset):
-        global servoPan_pos
-
-        if abs(xOffset) > (servo_max - servo_min) / servoTilt_midBox:
-                if xOffset > 0:
-                        pan = scaleNum(xOffset, 0, camTilt_max/2, 0, xOffset_max / panTilt_scaleDivisor)
-                        if (servoPan_pos + pan) < servo_max:
-                                servoPan_pos += pan
-                        else:
-                                servoTilt_pos = servo_max
-                elif xOffset < 0:
-                        xOffset *= -1
-                        pan = scaleNum(xOffset, 0, camTilt_max/2, 0, xOffset_max / panTilt_scaleDivisor)
-                        if (servoPan_pos - pan) > servo_min:
-                                servoPan_pos -= pan
-                        else:
-                                servoPan_pos = servo_min
-
 def setServoPos_continuous(xOffset):
 	global servoPan_pos
 
@@ -274,11 +238,9 @@ while True:
                                 faceFoundTransition(offsetToPan(headOffset[0] * -1), offsetToTilt(headOffset[1] * -1), s3_trackingPos, s4_pos)
                                 inDefaultAnim = False
                         else:
-                                xOffset_inv = headOffset[0] * -1
-                                yOffset_inv = headOffset[1] * -1
         #		        setServoPos_continuous(xOffset_inv)
-                                setServoPos_pan(xOffset_inv)
-                                setServoPos_tilt(yOffset_inv)
+                                servoPan_pos = offsetToPan(headOffset[0] * -1)
+                                servoTilt_pos = offsetToTilt(headOffset[1] * -1)
                                 s3_pos = s3_trackingPos
                                 #s4_pos = s4_trackingPos
 
