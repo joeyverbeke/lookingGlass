@@ -4,7 +4,7 @@ import time
 import zmq
 
 timeLastSent = 0
-timeBetweenSends = 10
+timeBetweenSends = 2
 
 ctx = zmq.Context()
 sub = ctx.socket(zmq.SUB)
@@ -45,6 +45,7 @@ default_movingClockwise = True
 default_movingUp = True
 default_s3Up = True
 default_s4Up = True
+inDefaultAnim = False
 
 s3_trackingPos = int(round(servo_min + (servo_max - servo_min)/4))
 s4_trackingPos = int(round(servo_min + (servo_max - servo_min)/2))
@@ -73,11 +74,51 @@ def scaleNum(OldValue, OldMin, OldMax, NewMin, NewMax):
 	return int(round((((OldValue - OldMin) * (NewMax - NewMin)) / (OldMax - OldMin)) + NewMin))
 
 #TODO: make movement smoother, probably through smoother smaller grain steps
+def offsetToPan(xOffset):
+        global servoPan_pos
+        newPan = servoPan_pos
+        
+        if abs(xOffset) > (servo_max - servo_min) / servoTilt_midBox:
+                if xOffset > 0:
+                        pan = scaleNum(xOffset, 0, camTilt_max/2, 0, xOffset_max / panTilt_scaleDivisor)
+                        if (newPan + pan) < servo_max:
+                                newPan += pan
+                        else:
+                                newPan = servo_max
+                elif xOffset < 0:
+                        xOffset *= -1
+                        pan = scaleNum(xOffset, 0, camTilt_max/2, 0, xOffset_max / panTilt_scaleDivisor)
+                        if (newPan - pan) > servo_min:
+                                newPan -= pan
+                        else:
+                                newPan = servo_min
+        return int(round(newPan))
+
+def offsetToTilt(yOffset):
+        global servoTilt_pos
+        newTilt = servoTilt_pos
+
+        if abs(yOffset) > (servo_max - servo_min) / servoTilt_midBox:
+                if yOffset > 0:
+                        tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
+                        if (newTilt + tilt) < servo_max:
+                                newTilt += tilt
+                        else:
+                                newTilt = servo_max
+                elif yOffset < 0:
+                        yOffset *= -1
+                        tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
+                        if (newTilt - tilt) > servo_min:
+                                newTilt -= tilt
+                        else:
+                                newTilt = servo_min
+
+        return int(round(newTilt))
+
 def setServoPos_tilt(yOffset):
         global servoTilt_pos
 
         if abs(yOffset) > (servo_max - servo_min) / servoTilt_midBox:
-#	if True:
                 if yOffset > 0:
                         tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
                         if (servoTilt_pos + tilt) < servo_max:
@@ -96,7 +137,6 @@ def setServoPos_pan(xOffset):
         global servoPan_pos
 
         if abs(xOffset) > (servo_max - servo_min) / servoTilt_midBox:
-#	if True:
                 if xOffset > 0:
                         pan = scaleNum(xOffset, 0, camTilt_max/2, 0, xOffset_max / panTilt_scaleDivisor)
                         if (servoPan_pos + pan) < servo_max:
@@ -130,6 +170,44 @@ def setServoPos_continuous(xOffset):
 	else:
 		servoPan_pos = servo_mid
 
+def faceFoundTransition(s1_goal, s2_goal, s3_goal, s4_goal):
+        global servoPan_pos, servoTilt_pos, s3_pos, s4_pos
+
+        servo_pos = [servoPan_pos, servoTilt_pos, s3_pos, s4_pos]
+        servo_goal = [s1_goal, s2_goal, s3_goal, s4_goal]
+        servo_inc = [True, True, True, True]
+        servo_finished = [False, False, False, False]
+
+        for i in range(0,4):
+                if servo_goal[i] < servo_pos[i]:
+                        servo_inc[i] = False
+
+        while True:
+                for i in range(0,4):
+                        if servo_finished[i] is False:
+                                if servo_inc[i]:
+                                        if servo_pos[i] < servo_goal[i]:
+                                                servo_pos[i] += 1
+                                        else:
+                                                servo_finished[i] = True
+                                else:
+                                        if servo_pos[i] > servo_goal[i]:
+                                                servo_pos[i] -= 1
+                                        else:
+                                                servo_finished[i] = True
+                                                
+                                pwm.set_pwm(i, 0, int(round(servo_pos[i])))
+                if servo_finished[0] and servo_finished[1] and servo_finished[2] and servo_finished[3]:
+                        break
+                
+                time.sleep(0.002)
+
+        servoPan_pos = servo_pos[0]
+        servoTilt_pos = servo_pos[1]
+        s3_pos = servo_pos[2]
+        s4_pos = servo_pos[3]
+        
+
 def defaultSearchAnim():
         global servoPan_pos, servoTilt_pos, s3_pos, s4_pos
         global default_movingClockwise, default_movingUp, default_s3Up, default_s4Up
@@ -158,15 +236,21 @@ def defaultSearchAnim():
                         default_movingUp = True
         if default_s3Up:
                 s3_pos += 1
-                if s3_pos >= servo_min + (servo_max - servo_min)/4:
-                        s3_pos = servo_min + (servo_max - servo_min)/4
+                if s3_pos >= servo_min + (servo_max - servo_min)/3:
+                        s3_pos = servo_min + (servo_max - servo_min)/3
                         default_s3Up = False
         else:
                 s3_pos -= 1
                 if s3_pos <= servo_min + (servo_max - servo_min)/8:
                         s3_pos = servo_min + (servo_max - servo_min)/8
                         default_s3Up = True
-        if default_s4Up:
+
+        s2_inv = int(round((servo_max - (servo_max - servo_min)/2) - (servoTilt_pos - (servo_min + (servo_max - servo_min)/4))))
+        print('s3_pos: {}.'.format(s3_pos))
+        print('s2_inv: {}.'.format(s2_inv))
+        s4_pos = s2_inv #= scaleNum(s3_inv, servo_max - (servo_max - servo_min)/2, servo_max - (servo_max - servo_min)/6,
+                          #servo_min + (servo_max - servo_min)/8, servo_min + (servo_max - servo_min)/3) 
+'''        if default_s4Up:
                 s4_pos += 3
                 if s4_pos >= servo_max - (servo_max - servo_min)/2:
                         s4_pos = servo_max - (servo_max - servo_min)/2
@@ -176,21 +260,27 @@ def defaultSearchAnim():
                 if s4_pos <= servo_min + (servo_max - servo_min)/6:
                         s4_pos = servo_min + (servo_max - servo_min)/6
                         default_s4Up = True
-
+'''
 while True:
+
 	headOffset = sub.recv_pyobj()
 	
 	if int(round(time.time() * 1000)) - timeLastSent > timeBetweenSends:
                 if headOffset[0] == 'd':
                         defaultSearchAnim()
+                        inDefaultAnim = True
                 else:
-                        xOffset_inv = headOffset[0] * -1
-                        yOffset_inv = headOffset[1] * -1
-        #		setServoPos_continuous(xOffset_inv)
-                        setServoPos_pan(xOffset_inv)
-                        setServoPos_tilt(yOffset_inv)
-                        s3_pos = s3_trackingPos
-                        s4_pos = s4_trackingPos
+                        if inDefaultAnim:
+                                faceFoundTransition(offsetToPan(headOffset[0] * -1), offsetToTilt(headOffset[1] * -1), s3_trackingPos, s4_pos)
+                                inDefaultAnim = False
+                        else:
+                                xOffset_inv = headOffset[0] * -1
+                                yOffset_inv = headOffset[1] * -1
+        #		        setServoPos_continuous(xOffset_inv)
+                                setServoPos_pan(xOffset_inv)
+                                setServoPos_tilt(yOffset_inv)
+                                s3_pos = s3_trackingPos
+                                #s4_pos = s4_trackingPos
 
                 pwm.set_pwm(0, 0, int(round(servoPan_pos)))
                 pwm.set_pwm(1, 0, int(round(servoTilt_pos)))
@@ -198,6 +288,6 @@ while True:
                 pwm.set_pwm(3, 0, int(round(s4_pos)))
                 print('servoPan_pos: {}.'.format(servoPan_pos))
                 print('xOffset: {}.'.format(headOffset[0]))
+                print('---')
                 timeLastSent = int(round(time.time() * 1000))
 
-#	print('---')
