@@ -24,6 +24,11 @@ faces = []
 timeFaceLost = 0
 trackingFace = False
 stopMovingTimeThreshold = 1000
+timeFaceFound = 0
+possibleFaceFound = False
+startTrackingTimeThreshold = 500
+
+#wait to make sure face is really found before stopping sending default animation to raspberry pi
 
 ####################3
 sendAsPantTilt = False
@@ -102,9 +107,15 @@ while True:
 		xOffset = middleX - w/2
 		yOffset = middleY - h/2
 
-		faces.append([xOffset,yOffset])
+		if possibleFaceFound is False:
+			timeFaceFound = int(round(time.time() * 1000))
+			possibleFaceFound = True
 
-		trackingFace = True
+		if timeFaceFound is not 0 and int(round(time.time() * 1000)) - timeFaceFound > startTrackingTimeThreshold:
+			faces.append([xOffset,yOffset])
+			trackingFace = True
+		else:
+			print("face found for: {}.".format(int(round(time.time() * 1000)) - timeFaceFound))
 
 		#pub.send_pyobj([xOffset, yOffset])
 
@@ -131,13 +142,16 @@ while True:
 		print("yOffset: {}.".format(faces[biggestFaceIndex][1]))
 		print('---')
 
-		if sendAsPantTilt:
-			panVal = scaleValue(faces[biggestFaceIndex][0], -200, 200, 0, 400)
-			tiltVal = scaleValue(faces[biggestFaceIndex][1], -150, 150, 0, 300)
-			panTilt = [panVal, tiltVal]
-			pub.send_pyobj(panTilt)
+		if trackingFace:
+			if sendAsPantTilt:
+				panVal = scaleValue(faces[biggestFaceIndex][0], -200, 200, 0, 400)
+				tiltVal = scaleValue(faces[biggestFaceIndex][1], -150, 150, 0, 300)
+				panTilt = [panVal, tiltVal]
+				pub.send_pyobj(panTilt)
+			else:
+				pub.send_pyobj(faces[biggestFaceIndex])
 		else:
-			pub.send_pyobj(faces[biggestFaceIndex])
+			pub.send_pyobj(['d', 'd'])
 		biggestFace = 0
 		biggestFaceIndex = 0
 		faces = []
@@ -145,14 +159,16 @@ while True:
 		if trackingFace == True:
 			trackingFace = False
 			timeFaceLost = int(round(time.time() * 1000))
+			timeFaceFound = 0
+			possibleFaceFound = False
 			#print('starting default anim')
 		if int(round(time.time() * 1000)) - timeFaceLost > stopMovingTimeThreshold:
-			print("default")
+			#print("default")
 			pub.send_pyobj(['d','d'])
 
 
 	# show the output frame
-	cv2.imshow("Frame", frame)
+	#cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
 
 	# if the `q` key was pressed, break from the loop
