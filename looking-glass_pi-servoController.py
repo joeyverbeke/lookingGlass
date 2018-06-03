@@ -101,17 +101,17 @@ def offsetToTilt(yOffset):
         if abs(yOffset) > (servo_max - servo_min) / servoTilt_midBox:
                 if yOffset > 0:
                         tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
-                        if (newTilt + tilt) < servo_max - (servo_max - servo_min)/4:
+                        if (newTilt + tilt) < servo_max - (servo_max - servo_min)/2:
                                 newTilt += tilt
                         else:
-                                newTilt = servo_max
+                                newTilt = servo_max - (servo_max - servo_min)/2
                 elif yOffset < 0:
                         yOffset *= -1
                         tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
                         if (newTilt - tilt) > servo_min + (servo_max - servo_min)/4:
                                 newTilt -= tilt
                         else:
-                                newTilt = servo_min
+                                newTilt = servo_min + (servo_max - servo_min)/4
 
         return int(round(newTilt))
 
