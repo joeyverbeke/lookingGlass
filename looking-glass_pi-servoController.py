@@ -4,7 +4,7 @@ import time
 import zmq
 
 timeLastSent = 0
-timeBetweenSends = 2
+timeBetweenSends = 4
 
 ctx = zmq.Context()
 sub = ctx.socket(zmq.SUB)
@@ -101,14 +101,14 @@ def offsetToTilt(yOffset):
         if abs(yOffset) > (servo_max - servo_min) / servoTilt_midBox:
                 if yOffset > 0:
                         tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
-                        if (newTilt + tilt) < servo_max:
+                        if (newTilt + tilt) < servo_max - (servo_max - servo_min)/4:
                                 newTilt += tilt
                         else:
                                 newTilt = servo_max
                 elif yOffset < 0:
                         yOffset *= -1
                         tilt = scaleNum(yOffset, 0, camTilt_max/2, 0, yOffset_max / panTilt_scaleDivisor)
-                        if (newTilt - tilt) > servo_min:
+                        if (newTilt - tilt) > servo_min + (servo_max - servo_min)/4:
                                 newTilt -= tilt
                         else:
                                 newTilt = servo_min
@@ -134,7 +134,7 @@ def setServoPos_continuous(xOffset):
 	else:
 		servoPan_pos = servo_mid
 
-def faceFoundTransition(s1_goal, s2_goal, s3_goal, s4_goal):
+def transitionToPosition(s1_goal, s2_goal, s3_goal, s4_goal):
         global servoPan_pos, servoTilt_pos, s3_pos, s4_pos
 
         servo_pos = [servoPan_pos, servoTilt_pos, s3_pos, s4_pos]
@@ -164,7 +164,7 @@ def faceFoundTransition(s1_goal, s2_goal, s3_goal, s4_goal):
                 if servo_finished[0] and servo_finished[1] and servo_finished[2] and servo_finished[3]:
                         break
                 
-                time.sleep(0.002)
+                time.sleep(0.004)
 
         servoPan_pos = servo_pos[0]
         servoTilt_pos = servo_pos[1]
@@ -231,11 +231,14 @@ while True:
 	
 	if int(round(time.time() * 1000)) - timeLastSent > timeBetweenSends:
                 if headOffset[0] == 'd':
+                        if inDefaultAnim is False:
+                                s2_inv = int(round((servo_max - (servo_max - servo_min)/2) - ((servo_min + (servo_max - servo_min)/4) - (servo_min + (servo_max - servo_min)/4))))
+                                transitionToPosition(servoPan_pos, servo_min + (servo_max - servo_min)/4, s3_trackingPos, s2_inv)
+                                inDefaultAnim = True
                         defaultSearchAnim()
-                        inDefaultAnim = True
                 else:
                         if inDefaultAnim:
-                                faceFoundTransition(offsetToPan(headOffset[0] * -1), offsetToTilt(headOffset[1] * -1), s3_trackingPos, s4_pos)
+                                transitionToPosition(offsetToPan(headOffset[0] * -1), offsetToTilt(headOffset[1] * -1), s3_trackingPos, s4_pos)
                                 inDefaultAnim = False
                         else:
         #		        setServoPos_continuous(xOffset_inv)
