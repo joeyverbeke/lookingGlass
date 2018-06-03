@@ -21,12 +21,12 @@ biggestFaceIndex = 0
 faces = []
 
 #TODO: don't change face unless its been lost for enough time
-timeFaceFound = 0
 timeFaceLost = 0
-
+trackingFace = False
+stopMovingTimeThreshold = 1000
 
 ####################3
-sendAsPantTilt = True
+sendAsPantTilt = False
 
 def scaleValue(old, oldMin, oldMax, newMin, newMax):
 	scaledVal = (((old - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin
@@ -86,21 +86,25 @@ while True:
 		(startX, startY, endX, endY) = box.astype("int")
 
 		frameWidth = w
-		freamHeight = h
+		frameHeight = h
 
 		middleX = startX + (endX - startX)/2
 		middleY = startY + (endY - startY)/2
 
 		boxSize = (endX - startX) * (endY - startY)
 
-		if biggestFaceIndex < boxSize:
-			biggestFace = boxSize
-			biggestFaceIndex = i
+		if endX > frameWidth or endY > frameHeight: #if valid face
+			break
+			if biggestFaceIndex < boxSize: #if biggest face
+				biggestFace = boxSize
+				biggestFaceIndex = i
 
 		xOffset = middleX - w/2
 		yOffset = middleY - h/2
 
 		faces.append([xOffset,yOffset])
+
+		trackingFace = True
 
 		#pub.send_pyobj([xOffset, yOffset])
 
@@ -137,6 +141,15 @@ while True:
 		biggestFace = 0
 		biggestFaceIndex = 0
 		faces = []
+	else:
+		if trackingFace == True:
+			trackingFace = False
+			timeFaceLost = int(round(time.time() * 1000))
+			#print('starting default anim')
+		if int(round(time.time() * 1000)) - timeFaceLost > stopMovingTimeThreshold:
+			print("default")
+			pub.send_pyobj(['d','d'])
+
 
 	# show the output frame
 	cv2.imshow("Frame", frame)
